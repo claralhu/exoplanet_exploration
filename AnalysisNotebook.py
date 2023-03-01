@@ -286,3 +286,225 @@ plt.show()
 
 
 features = ['log_radius', 'log_orbper', 'log_trandep', 'pl_eqt']
+
+# ## Data Modeling
+# 
+# ### Logistic Regression Model
+# 
+# The machine learning model that will be used as the baseline model is the **logistic regression model**. The logistic regression model will be used because the problem that is being investigated in this project is a binary classification problem. We are trying to find a way to distinguish/classify candidate exoplanets as either CONFIRMED (1) exoplanets, or FALSE POSITIVE (0) exoplanets.
+
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+
+# ### Split the data into separate Training and Validation sets
+# 
+# I will be using 90% of the data as training data and 10% of the data as validation data. These datasets will be used the cross-validation of my model, and that cross validating will check for overfitting in the model.
+
+
+
+train, val = train_test_split(train_val[['planet', 'log_radius', 'log_orbper', 'pl_trandep', 'pl_eqt', 'log_eqt', 'log_trandep']], test_size = 0.1, random_state = 42)
+
+x_train = train[features]
+y_train = np.array(train['planet'])
+
+x_val = val[features]
+y_val = np.array(val['planet'])
+
+x_train[:5], y_train[:5]
+
+
+# ### Create the Logistic Regression Model
+
+
+
+model = LogisticRegression(solver = 'lbfgs')
+model.fit(x_train, y_train)
+train_predicts = model.predict(x_train)
+
+val_predicts = model.predict(x_val)
+
+
+# ### ROC Curve
+# ROC Curve for training data using the Logistic Regression. Shows tradeoff for false positives and false negatives at various cutoffs. Quite a high proportion of false positives is needed to capture all the true positives
+
+
+
+from sklearn.metrics import roc_curve
+fpr, tpr, threshold = roc_curve(y_train, model.predict_proba(x_train)[:, 1])
+
+fig = sns.lineplot(x=fpr, y = tpr)
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.savefig('figures/roc_curve.png')
+plt.show();
+
+
+# ### Confusion Matrix for Logistic Model
+# Confusion Matrix for the training data using the Logistic Model. There is a low false negative rate but quite a high false positive rate.
+
+
+
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+conf_mat = confusion_matrix(y_train, train_predicts)
+cm_disp = ConfusionMatrixDisplay(confusion_matrix = conf_mat)
+cm_disp.plot()
+plt.title("Logistic Regression Model Confusion Matrix")
+plt.savefig('figures/confusion_matrix.png')
+plt.show();
+
+
+# ### Second Model Using Decision Tree Model
+# 
+# In order to improve the model used to predict the Kepler objects of interest, I will be making a second model, which is this time a decision tree model. The decision tree model is also a supervised machine learning model used for classification. 
+
+
+
+from sklearn import tree
+model_tree = tree.DecisionTreeClassifier(min_samples_leaf=5)
+model_tree.fit(x_train, y_train)
+
+tree_trainpredicts = model_tree.predict(x_train)
+tree_valpredicts = model_tree.predict(x_val)
+
+
+# ### Confusion Matrix for Decision Tree Model
+# 
+# Confusion Matrix for the training data using the Decision Tree Model. The false negative and false positive rates are much lower in the decision tree model compared to the logistic regression model.
+
+
+conf_mat_tree = confusion_matrix(y_train, tree_trainpredicts)
+cm_disp_tree = ConfusionMatrixDisplay(confusion_matrix = conf_mat_tree)
+cm_disp_tree.plot()
+plt.title("Decision Tree Model Confusion Matrix")
+plt.savefig('figures/confusion_matrix_decisiontree.png')
+plt.show();
+
+
+# ### Evaluation of Models
+# - Comparison of Accuracy, Precision, and Recall of the Logistic Regression and Decision Tree Models
+# - Comparison of Binary Error and Cross-Validation Error of the Logistic Regression and Decision Tree Models
+# 
+# #### Training Data Accuracy, Precision, Recall
+
+
+
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+
+### For Logistic Regression Model
+training_accuracy = model.score(x_train, y_train)
+training_recall = recall_score(y_train, train_predicts)
+training_precision = precision_score(y_train, train_predicts)
+
+print("Logistic Regression Training Accuracy:", training_accuracy)
+print("Logistic Regression Training Recall:", training_recall)
+print("Logistic Regression Training Precision:", training_precision)
+
+print("\n")
+
+### For Decision Tree Model
+tree_training_accuracy = model_tree.score(x_train, y_train)
+tree_training_recall = recall_score(y_train, tree_trainpredicts)
+tree_training_precision = precision_score(y_train, tree_trainpredicts)
+
+print("Decision Tree Training Accuracy:", tree_training_accuracy)
+print("Decision Tree Training Recall:", tree_training_recall)
+print("Decision Tree Training Precision:", tree_training_precision)
+
+
+# #### Validation Data Accuracy, Precision, Recall
+
+
+
+validation_accuracy = model.score(x_val, y_val)
+validation_recall = recall_score(y_val, val_predicts)
+validation_precision = precision_score(y_val, val_predicts)
+
+### For Logistic Regression Model
+print("Logistic Regression Validation Accuracy:", validation_accuracy)
+print("Logistic Regression Validation Recall:", validation_recall)
+print("Logistic Regression Validation Precision:", validation_precision)
+
+print("\n")
+
+### For Decision Tree Model
+tree_val_accuracy = model_tree.score(x_val, y_val)
+tree_val_recall = recall_score(y_val, tree_valpredicts)
+tree_val_precision = precision_score(y_val, tree_valpredicts)
+
+print("Decision Tree Validation Accuracy:", tree_val_accuracy)
+print("Decision Tree Validation Recall:", tree_val_recall)
+print("Decision Tree Validation Precision:", tree_val_precision)
+
+
+# #### Binary Error and Cross Validation Error
+# The binary error is the proportion of the validation set that the model classifies incorrectly.  
+# The cross validation error is the error determined by the loss function.
+# 
+# #### Cross Entropy Loss Function
+# The loss function used for this project is the cross-entropy (log)loss function. The cross-entropy loss function also measures the performance of the model. The cross entropy loss for this model given the data is quite large, meaning that there could be further improvements to the model. Future improvements could be made if more data were collected on different features/characteristics of the kepler objects of interest that are still missing.
+
+
+
+from sklearn.metrics import log_loss
+
+### Logistic Regression binary error and cv error
+binary_error = np.mean(val_predicts != y_val)
+cv_error = log_loss(y_val, val_predicts) 
+
+print("Logistic Regression Binary Error:", binary_error)
+print("Logistic Regression Cross Validation Error:", cv_error)
+
+print("\n")
+
+### Decision Tree binary error and cv error
+tree_binary_error = np.mean(tree_valpredicts != y_val)
+tree_cv_error = log_loss(y_val, tree_valpredicts) 
+
+print("Decision Tree Binary Error:", tree_binary_error)
+print("Decision Tree Cross Validation Error:", tree_cv_error)
+
+
+# The Logistic Regression Model was my baseline model, and I improved the model by switching it to a Decision Tree Model. Overall, the Decision Tree model performed better compared to the Logistic Regression Model for classifying whether the Kepler Objects of Interest should be classified as CONFIRMED or FALSE POSITIVE. The Decision Tree Model had higher Accuracy, Recall and Precision as well as lower binary error and cross validation error when compared to the Logistic Regression Model.
+# 
+# For both of the models I attempted to reduce variance by using regularization. L2 regularization was applied to the features in order to simplify the features and model so that variance is reduced. From a bias-variance tradeoff standpoint, the reduction in variance increased accuracy but also increases bias and error for the model. I checked for overfitting of the models through the use of cross validation, and comparing the predictions and results of the model when applied to training set and the validation set. In addition, for the Decision Tree Model I alleviated the overfitting problem by increasing the parameter min_samples_leaf to 5 when building the model so that the model can learn from more samples of the data before it splits, ensuring that multiple samples are used to inform every decision in the tree.
+# 
+# Although the decision tree model already improved upon the logistic regression model, based on the outcome of the model, there is still room for improvement. The model may be able to be further improved if more features related to the objects of interest being exoplanets or not were used. This would mean that searching through other external datasets for features or future collection of more data is needed.
+
+# ### Applying the Model to the Test (CANDIDATE) Data
+
+# #### Prediction of planets from Test Data using Logistic Regression
+
+
+
+x_test = test[features]
+test_predictions = model.predict(x_test)
+
+test_predict_planet = sum(test_predictions == 1)
+test_predict_false = sum(test_predictions == 0)
+
+print("Number of CANDIDATES predicted to be CONFIRMED (Logistic Regression):", test_predict_planet)
+print("Number of CANDIDATES predicted to be FALSE POSITIVES (Logistic Regression):", test_predict_false)
+print("Proportion of CANDIDATES predicted to be CONFIRMED (Logistic Regression):", test_predict_planet/len(test_predictions))
+
+
+# #### Prediction of planets from Test Data using Decision Trees
+
+
+tree_test_predictions = model_tree.predict(x_test)
+
+tree_test_predict_planet = sum(tree_test_predictions == 1)
+tree_test_predict_false = sum(tree_test_predictions == 0)
+
+print("Number of CANDIDATES predicted to be CONFIRMED (Decision Tree):", tree_test_predict_planet)
+print("Number of CANDIDATES predicted to be FALSE POSITIVES (Decision Tree):", tree_test_predict_false)
+print("Proportion of CANDIDATES predicted to be CONFIRMED (Decision Tree):", tree_test_predict_planet/len(tree_test_predictions))
+
+
+# Using the Decision Tree Model, there were less Kepler Objects of Interest that were predicted to be CONFIRMED compared to what the Logistic Regression Model predicted. In the Decision Tree model, about 58% of the test data were CONFIRMED, while in the logistic regression model, about 79% were predicted to be confirmed. This result makes sense because of the much higher false positive rate and lower accuracy that the Logistic Regression Model had in comparison to the Decision Tree model.
+
