@@ -13,8 +13,6 @@
 
 # #### Import Libraries
 
-# In[1]:
-
 
 import numpy as np
 
@@ -27,3 +25,78 @@ import seaborn as sns
 
 import warnings
 warnings.filterwarnings("ignore")
+
+# ## Data Cleaning
+# 
+# **Read in Kepler Exoplanet Search Dataset and Kepler Planetary System Composite Dataset**
+
+
+
+kep_search = pd.read_csv("data/kepler_exoplanet_search.csv")
+koi_comp = pd.read_csv("data/koi_composite.csv")
+kep_comp = pd.read_csv("data/kepler_planetary_system_composite.csv")
+
+
+# #### Kepler Exoplanet Search Dataset
+# 
+# - **Granularity:** Each entry represents a kepler object of interest (possible exoplanet) that has been discovered on the Kepler missions
+# - The dataset includes many invalid entries. Many of the features only include NaN entries.
+
+
+
+kep_search.head()
+
+
+# We will remove all the features that only have NaN entries and create a new dataframe **kep_search_clean**
+
+
+
+#function that removes all the columns with only NaN values
+def rm_nan_features(df):
+    clean_df = pd.DataFrame()
+    for column in df.columns:
+        if not all(pd.isnull(df[column])):
+            clean_df[column] = df[column]
+    return clean_df
+
+#remove all columns with only NaN values from the Kepler Exoplanet Search dataset
+kep_search_clean = rm_nan_features(kep_search)
+kep_search_clean.head()
+
+
+# #### Kepler Object of Interest Composite Dataset
+# 
+# - **Granularity:** Each entry represents a kepler object of interest (possible exoplanet) that has been discovered on the Kepler missions
+# - This dataset contains data for the information on various characteristics of the Kepler objects of interest that were missing from the provided Kepler Search dataset, such as planet radius, transit duration, transit depth, planet equilibrium temperature, stellar effective temperature, and insolation flux.
+# - This dataset does not seem to contain invalid entries.
+
+
+
+koi_comp[['kepid','koi_prad','koi_insol', 'koi_teq','koi_depth','koi_duration','koi_steff', 'koi_impact']].head()
+
+
+# The data from the **Kepler Object of Interest Composite Dataset** will be merged with **Kepler Exoplanet Search Dataset** by the specific Kepler of Interests to form a new dataframe called **koi_merged**.
+
+
+
+koi_merged = kep_search_clean.merge(koi_comp[['kepid','koi_prad','koi_insol', 'koi_teq', 'koi_depth','koi_duration','koi_steff']],
+                                    on = ['kepid']).drop_duplicates()
+koi_merged.head()
+
+
+# **Kepler Planetary System Composite Dataset**
+# 
+# - **Granularity:** Each entry in the dataset contains information on a confirmed exoplanet from outside of our solar system
+# - This dataset also contains several features/columns with invalid values (all NaNs). 
+
+
+
+kep_comp.head()
+
+
+# For this dataset, we will also remove all the features that only have NaN entries and create a new dataframe **kep_comp_clean**.
+
+
+
+kep_comp_clean = rm_nan_features(kep_comp)
+kep_comp_clean.head()
